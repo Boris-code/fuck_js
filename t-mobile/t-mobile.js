@@ -23,7 +23,7 @@ function getXAuthorization1(s) {
 
 }
 
-function getXAuthorization2() {
+function getXAuthorization2(header, body) {
   var i = function () {
     var e = Math.pow(2, 32)
     return globalThis.crypto.getRandomValues(new Uint32Array(1))[0] / e
@@ -52,11 +52,11 @@ function getXAuthorization2() {
     return l.join("")
   }
 
-  var generateEhtsFormat = function (e, t, n, o, a, s, u, c) {
+  var generateEhtsFormat = function (e, t, n, header, Authorization, s, u, c) {
     var d = new Map
       , p = 'tpp-product/v1/'
     d.set("Content-Type", "application/json"),
-      a && a.length > 0 && e.url !== 'oauth2/v6/tokens' && (a.startsWith("Bearer") ? d.set("Authorization", a) : d.set("Authorization", "Bearer " + a))
+      Authorization && Authorization.length > 0 && e.url !== 'oauth2/v6/tokens' && (Authorization.startsWith("Bearer") ? d.set("Authorization", Authorization) : d.set("Authorization", "Bearer " + Authorization))
     e.url;
     (s && Object.keys(s).length > 0 && u,
       u = encodeURI(u.trim()),
@@ -65,9 +65,9 @@ function getXAuthorization2() {
     d.set("uri", "/" + f),
       d.set("http-method", n),
       t && d.set("body", t),
-      d.set("activityId", '16699006043552071691034361720000'),
+      d.set("activityId", header.activityId),
       d.set("channelId", 'WEB'),
-      d.set("interactionId", 'WEB3b7f041afa8628e4b87319d482fd31a7ANON95400')
+      d.set("interactionId", header.interactionId)
     //o.headers.get("channelid") && "nrd" === o.headers.get("channelid").toLowerCase() && this.stateStoreUtils.getApplicationUserId() && d.set("applicationUserId", this.stateStoreUtils.getApplicationUserId());
     var h = ""
       , m = ""
@@ -80,14 +80,15 @@ function getXAuthorization2() {
     // console.log("edts", m)
     var g = r()
       , v = base64(CryptoJS.SHA256(m)).replace(/\+/g, "-").replace(/\//g, "_").replace(/\=+$/, "")  // CryptoJS.SHA256(m).toString(i.enc.Base64).replace(/\+/g, "-").replace(/\//g, "_").replace(/\=+$/, "")
-      , y = 45 //sessionStorage.getItem("sessionCounter")
-      , b = 1669900457 + 45 //Number(sessionStorage.getItem("serverLoadTime")) + Number(y)
-      , S = b + 120
+      , y = 45 //sessionStorage.getItem("sessionCounter") 初始值是1，每一秒钟得加1
+      , b = 1669900457 + 45 //Number(sessionStorage.getItem("serverLoadTime")) + Number(y) serverLoadTime 网站初始化的实际，然后就固定了
+      , S = b + 120 // 过期时间
     //(this.appConfig.getConfig("tokenExp") ? this.appConfig.getConfig("tokenExp") : 120);
     return JSON.stringify({
       edts: v,
       v: "1",
-      exp: S,
+      // exp: S,
+      exp: Date.parse(new Date().toUTCString()) / 1000 + 120,
       ehts: h,
       iat: b,
       jti: g
@@ -100,54 +101,33 @@ function getXAuthorization2() {
     "proxyName": "product",
     "url": "devices/compatibility-check"
   }
-  var t = {
-    "imei": "356908241999600",
-    "compatibility": true
-  }
+  // var t = {
+  //   "imei": "356908241999600",
+  //   "compatibility": true
+  // }
+
+  var t = body
 
   var n = "POST"
-  var header = {
-    "headers": {
-      "Content-type": [
-        "application/json"
-      ],
-      "senderId": [
-        "TMO"
-      ],
-      "applicationId": [
-        "REBELLION"
-      ],
-      "tl_referer": [
-        "https://prepaid.t-mobile.com/bring-your-own-device"
-      ],
-      "channelId": [
-        "WEB"
-      ],
-      "activityId": [
-        "16702582010961987594291567802400"
-      ],
-      "stackId": [
-        ""
-      ],
-      "interactionId": [
-        "WEBef4d9de3b4f09c2fd21efe52e2cddf3dANON83185"
-      ],
-      "Authorization": [
-        "Bearer eyJraWQiOiI0NDY3MzUxNy04MTc4LTJjYTMtOWU3MC1mZTZiYjg4YjU2OTIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJsUmFjY1MzbDZKSmE2bElpTElFQVBJZnJ4aXdTaU5pZSIsInJ0Ijoie1wic2VnbWVudGF0aW9uSWRcIjpcIlBPTEFSSVNcIn0iLCJkZWFsZXJDb2RlIjoiIiwiaXNzIjoiaHR0cHM6XC9cL2FwaS50LW1vYmlsZS5jb21cL29hdXRoMlwvdjYiLCJtYXN0ZXJEZWFsZXJDb2RlIjoiIiwiYXV0aFRpbWUiOiIxNjcwMjU4MTM3ODY0Iiwic3RvcmVJZCI6IiIsInVzbiI6Ijk1OTA0YzkwLTVmZmQtYzlhNi0yMDA1LTllOTAxYjRmMzhlYiIsImF1ZCI6ImxSYWNjUzNsNkpKYTZsSWlMSUVBUElmcnhpd1NpTmllIiwic2VuZGVySWQiOiIiLCJuYmYiOjE2NzAyNTgxMzcsInNjb3BlIjoiIiwiY25mIjoiLS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0gTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1SDRvSmZSZDg0WFM0anF2bEpBb3Y0QXpaOXRZa09BbjFxYmRrT1E4aThta2twamJHaklDcDU1ZGxaR2NXNDJKMHh3WGdrcVg2aFl6VFNUZTIydzlZMUY2UzVXSkdxXC8wZUN0c3hDcXBLK3FCQWNOZnlDT0RcL1Jmb2owZGpIMmtxWHlVMmxzUU1zbUFGU2tManlcL1hPNEdHUzBhMGpHcElqUnA0Uk1mUlgrMDJ1dUZWOFVEUXFSRkY4ZERqcGNZOTdMc1ZLTWdlT0haclg1T3ZkOCs0NlUwUUNGbWxGYk9JQktwbnQ2VEg5MzBmSkxaU1BJQTdGY3lWbnFNZmtseitnMkZMbHV3REtoRkJJeCtBdlRQUnhxd1piY2dFOEVXUzlmSTZmQVQ4cGpQZ2JON01IUGVsaEErN3ZLV2Fuc2R2bTJcL3dXdGo2YzU5SzBOY3crbktNZEpRSURBUUFCIC0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLSIsImFwcGxpY2F0aW9uSWQiOiJSRUJFTExJT04iLCJleHAiOjE2NzAyNjE3MzcsImlhdCI6MTY3MDI1ODEzNywiY2hhbm5lbElkIjoiIiwianRpIjoiMTIwZjkyYjktZmRmNy0zNGFkLWUwNWEtODZiZTY5MGJmMTg1In0.0Aqt0xN9din0yuwoZHGRaHhybm9ftlXQe3jB3p1Z8M2f0Rj1zmTilxY4BTeIf-9xcu7vpw5HUM9AtgtYAoWlAsZBDEzHiH0omv_i4ucueOdoaL5UpT5ICpWQtTXszXf01qYRnIJS-7uOdlpilj80ZO5GN_u6MrEugIhtbfK7tGNG-Hwp3neSy7CyNr6gXgsE7JUCxqIMaRVPI50y20dYYLUdN1wiBnnk9ha6E8ZtuXsamYAuBntD3t0mATps2dCTRCZq9feYU3KXPZ3XoQrvW5b5vGWsmi3RjeV1y7fVi2dTqwfx78Hy4A2d2JARvnq9Jho5gxw1sBFf0f8CBvR2JA"
-      ],
-      "sessionId": [
-        "ef4d9de3b4f09c2fd21efe52e2cddf3d"
-      ],
-      "workflowId": [
-        "WF-SC-01.06"
-      ],
-      "screenId": [
-        "SC1135"
-      ]
-    }
-  }
+  //   var header = {
+  //     "activityId": "16707456326736043046000413597000",
+  //     "applicationId": "REBELLION",
+  //     "Authorization": "Bearer eyJraWQiOiI0NDY3MzUxNy04MTc4LTJjYTMtOWU3MC1mZTZiYjg4YjU2OTIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJsUmFjY1MzbDZKSmE2bElpTElFQVBJZnJ4aXdTaU5pZSIsInJ0Ijoie1wic2VnbWVudGF0aW9uSWRcIjpcIlRJVEFOXCJ9IiwiZGVhbGVyQ29kZSI6IiIsImlzcyI6Imh0dHBzOlwvXC9hcGkudC1tb2JpbGUuY29tXC9vYXV0aDJcL3Y2IiwibWFzdGVyRGVhbGVyQ29kZSI6IiIsImF1dGhUaW1lIjoiMTY3MDc0NTUyNTYwNSIsInN0b3JlSWQiOiIiLCJ1c24iOiIwODViOTgxYy00ODc0LTc0NDktMjhmZC1jYzZmN2UyODliNDYiLCJhdWQiOiJsUmFjY1MzbDZKSmE2bElpTElFQVBJZnJ4aXdTaU5pZSIsInNlbmRlcklkIjoiIiwibmJmIjoxNjcwNzQ1NTI1LCJzY29wZSI6IiIsImNuZiI6Ii0tLS0tQkVHSU4gUFVCTElDIEtFWS0tLS0tIE1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBdUg0b0pmUmQ4NFhTNGpxdmxKQW92NEF6Wjl0WWtPQW4xcWJka09ROGk4bWtrcGpiR2pJQ3A1NWRsWkdjVzQySjB4d1hna3FYNmhZelRTVGUyMnc5WTFGNlM1V0pHcVwvMGVDdHN4Q3FwSytxQkFjTmZ5Q09EXC9SZm9qMGRqSDJrcVh5VTJsc1FNc21BRlNrTGp5XC9YTzRHR1MwYTBqR3BJalJwNFJNZlJYKzAydXVGVjhVRFFxUkZGOGREanBjWTk3THNWS01nZU9IWnJYNU92ZDgrNDZVMFFDRm1sRmJPSUJLcG50NlRIOTMwZkpMWlNQSUE3RmN5Vm5xTWZrbHorZzJGTGx1d0RLaEZCSXgrQXZUUFJ4cXdaYmNnRThFV1M5Zkk2ZkFUOHBqUGdiTjdNSFBlbGhBKzd2S1dhbnNkdm0yXC93V3RqNmM1OUswTmN3K25LTWRKUUlEQVFBQiAtLS0tLUVORCBQVUJMSUMgS0VZLS0tLS0iLCJhcHBsaWNhdGlvbklkIjoiUkVCRUxMSU9OIiwiZXhwIjoxNjcwNzQ5MTI1LCJpYXQiOjE2NzA3NDU1MjUsImNoYW5uZWxJZCI6IiIsImp0aSI6IjA1ODUwOTYwLTYwYjEtYzJkNS0xYmI3LTA3ZGUwOWZiZWFmMCJ9.iifhtaTIW3KxjIyKMfe5S2r0Q7Sb4GJpC-YsyJ4s11R7KWncCh2YZ2z1zZlwOYfmOVCTLJloDjOoeEA3LMToZGwhyCW0ijU-1JSxnu31OdOVfM5xxRJmxkZrhQVOC8Rkb8hVsajBYmHuwqYbRN_2q4M8ixJx2awTIOhNk2B_fp_jJsnUSFcwzFhFE1w4odzSlrEZaW-TrI9tHSOX5Zn92FxL2kZaBFSbDRhVXp_JRLeVMZQeHI4vOk75IORNYh3XZbmEyTczpQeNGJ2_OJsz_2gKYuVsIrclLzF7AqR9_nPVoDiulddySkvsOn0SZH8IE1qeIuw77NveBQep8roGmA",
+  //     "channelId": "WEB",
+  //     "Content-type": "application/json",
+  //     "interactionId": "WEBb692b6cc8869e78fcec48f721348505dANON62554",
+  //     "Referer": "https://prepaid.t-mobile.com/",
+  //     "screenId": "SC1135",
+  //     "senderId": "TMO",
+  //     "sessionId": "b692b6cc8869e78fcec48f721348505d",
+  //     "stackId": "",
+  //     "tl_referer": "https://prepaid.t-mobile.com/bring-your-own-device",
+  //     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+  //     "workflowId": "WF-SC-01.06",
+  //     "x-authorization": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5BIn0.eyJlZHRzIjoibUdLeHEwTWhVN0tKVlprZm10TjFza3J3VzhISzlUWVZEdFRrbGRRZUlCRSIsInYiOiIxIiwiZXhwIjoxNjcwNzQ2MDU4LCJlaHRzIjoiQ29udGVudC1UeXBlO0F1dGhvcml6YXRpb247dXJpO2h0dHAtbWV0aG9kO2JvZHk7YWN0aXZpdHlJZDtjaGFubmVsSWQ7aW50ZXJhY3Rpb25JZCIsImlhdCI6MTY3MDc0NTkzOCwianRpIjoiOTVkMzEzYjItZjVmOS0zZWVkLTViNDgtZjJiNDk5YmI5OTE5In0.Y9MQpPsHTfACB_GJfH6YYRnrwSGXLvjDyPOXi3Hj-QVLa8W-EWqX6JQ06F4vbRlWxGo43NiF7MczFolayifFUb12gnI-F7HQ-3QZVOdMw8qk8Uo92I4xO7ockWK13bP4xWXl7OBn44IbxLKiblpQpCPmneEk9DqzCZujc4YT1Sm9cIOJAFR0gofTk3CGFskLFFRz1eag8NEApXXSLlNdS_g7imclqxGJGuJbNOxWCl3MTiAwt0QwAodso8rbZc7msUtJ4wnBSpwF5HF8tPB6J39rgWz96AyrzGbRCNwW7f7cQNRFN3PkIbel_o7TbJxk3HB6Br101c2di0M-La1-CQ"
+  // }
 
-  var a = "eyJraWQiOiI0NDY3MzUxNy04MTc4LTJjYTMtOWU3MC1mZTZiYjg4YjU2OTIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJsUmFjY1MzbDZKSmE2bElpTElFQVBJZnJ4aXdTaU5pZSIsInJ0Ijoie1wic2VnbWVudGF0aW9uSWRcIjpcIlBPTEFSSVNcIn0iLCJkZWFsZXJDb2RlIjoiIiwiaXNzIjoiaHR0cHM6XC9cL2FwaS50LW1vYmlsZS5jb21cL29hdXRoMlwvdjYiLCJtYXN0ZXJEZWFsZXJDb2RlIjoiIiwiYXV0aFRpbWUiOiIxNjY5OTAwNDU5MDkyIiwic3RvcmVJZCI6IiIsInVzbiI6IjA4ZWUyNGNlLTE0ZmYtOTcyNC1kMDA3LTcxOTU4YTZmNDk4NCIsImF1ZCI6ImxSYWNjUzNsNkpKYTZsSWlMSUVBUElmcnhpd1NpTmllIiwic2VuZGVySWQiOiIiLCJuYmYiOjE2Njk5MDA0NTksInNjb3BlIjoiIiwiY25mIjoiLS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0gTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1SDRvSmZSZDg0WFM0anF2bEpBb3Y0QXpaOXRZa09BbjFxYmRrT1E4aThta2twamJHaklDcDU1ZGxaR2NXNDJKMHh3WGdrcVg2aFl6VFNUZTIydzlZMUY2UzVXSkdxXC8wZUN0c3hDcXBLK3FCQWNOZnlDT0RcL1Jmb2owZGpIMmtxWHlVMmxzUU1zbUFGU2tManlcL1hPNEdHUzBhMGpHcElqUnA0Uk1mUlgrMDJ1dUZWOFVEUXFSRkY4ZERqcGNZOTdMc1ZLTWdlT0haclg1T3ZkOCs0NlUwUUNGbWxGYk9JQktwbnQ2VEg5MzBmSkxaU1BJQTdGY3lWbnFNZmtseitnMkZMbHV3REtoRkJJeCtBdlRQUnhxd1piY2dFOEVXUzlmSTZmQVQ4cGpQZ2JON01IUGVsaEErN3ZLV2Fuc2R2bTJcL3dXdGo2YzU5SzBOY3crbktNZEpRSURBUUFCIC0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLSIsImFwcGxpY2F0aW9uSWQiOiJSRUJFTExJT04iLCJleHAiOjE2Njk5MDQwNTksImlhdCI6MTY2OTkwMDQ1OSwiY2hhbm5lbElkIjoiIiwianRpIjoiZmM0MTFiNzYtMGFjZi03OGQ1LTMyMTEtZTVhYmE1ZWU1ZWY0In0.QraxvH8QZBxOta__yCmclHm6wSTIUpTJlKefjSyxjMRr3ZadLM2byJUvOLVgc49B5Mt7lSXQucYgT4ks59qbRRwC27Mi7QxBMjNBkkC1zTJ6xqqDMNxlKJEQfMi4guFBQgz3rp8s6neH3Z373aHqBKE890owYl3OG-4TU2aMkA61br8-uWOZkrnkFSa-LYy3_kpa5f9YAK-4-xi-rc_V0okZGHOYkOqWWxOT0e3XyCeyeDUfrLd4_RKa8RMNJJS6iHhIizTwMQ2ShvMsmfd4Nd5XvnYUyM1H94QwCzULVIR8EhtTqxLH3m6TYjKWksgJY5XTFiM4jCo01s4CUufe5A"
+  var a = header.Authorization
   var s = null
   var u = "devices/compatibility-check"
   var c = null
@@ -201,8 +181,28 @@ var s = {
 let xAuthorization1 = getXAuthorization1(s)
 console.log('xAuthorization1', xAuthorization1, "\n")
 
-
-let xAuthorization2 = getXAuthorization2()
+var header = {
+  "activityId": "16707456326736043046000413597000",
+  "applicationId": "REBELLION",
+  "Authorization": "Bearer eyJraWQiOiI0NDY3MzUxNy04MTc4LTJjYTMtOWU3MC1mZTZiYjg4YjU2OTIiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJsUmFjY1MzbDZKSmE2bElpTElFQVBJZnJ4aXdTaU5pZSIsInJ0Ijoie1wic2VnbWVudGF0aW9uSWRcIjpcIlRJVEFOXCJ9IiwiZGVhbGVyQ29kZSI6IiIsImlzcyI6Imh0dHBzOlwvXC9hcGkudC1tb2JpbGUuY29tXC9vYXV0aDJcL3Y2IiwibWFzdGVyRGVhbGVyQ29kZSI6IiIsImF1dGhUaW1lIjoiMTY3MDc0NTUyNTYwNSIsInN0b3JlSWQiOiIiLCJ1c24iOiIwODViOTgxYy00ODc0LTc0NDktMjhmZC1jYzZmN2UyODliNDYiLCJhdWQiOiJsUmFjY1MzbDZKSmE2bElpTElFQVBJZnJ4aXdTaU5pZSIsInNlbmRlcklkIjoiIiwibmJmIjoxNjcwNzQ1NTI1LCJzY29wZSI6IiIsImNuZiI6Ii0tLS0tQkVHSU4gUFVCTElDIEtFWS0tLS0tIE1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBdUg0b0pmUmQ4NFhTNGpxdmxKQW92NEF6Wjl0WWtPQW4xcWJka09ROGk4bWtrcGpiR2pJQ3A1NWRsWkdjVzQySjB4d1hna3FYNmhZelRTVGUyMnc5WTFGNlM1V0pHcVwvMGVDdHN4Q3FwSytxQkFjTmZ5Q09EXC9SZm9qMGRqSDJrcVh5VTJsc1FNc21BRlNrTGp5XC9YTzRHR1MwYTBqR3BJalJwNFJNZlJYKzAydXVGVjhVRFFxUkZGOGREanBjWTk3THNWS01nZU9IWnJYNU92ZDgrNDZVMFFDRm1sRmJPSUJLcG50NlRIOTMwZkpMWlNQSUE3RmN5Vm5xTWZrbHorZzJGTGx1d0RLaEZCSXgrQXZUUFJ4cXdaYmNnRThFV1M5Zkk2ZkFUOHBqUGdiTjdNSFBlbGhBKzd2S1dhbnNkdm0yXC93V3RqNmM1OUswTmN3K25LTWRKUUlEQVFBQiAtLS0tLUVORCBQVUJMSUMgS0VZLS0tLS0iLCJhcHBsaWNhdGlvbklkIjoiUkVCRUxMSU9OIiwiZXhwIjoxNjcwNzQ5MTI1LCJpYXQiOjE2NzA3NDU1MjUsImNoYW5uZWxJZCI6IiIsImp0aSI6IjA1ODUwOTYwLTYwYjEtYzJkNS0xYmI3LTA3ZGUwOWZiZWFmMCJ9.iifhtaTIW3KxjIyKMfe5S2r0Q7Sb4GJpC-YsyJ4s11R7KWncCh2YZ2z1zZlwOYfmOVCTLJloDjOoeEA3LMToZGwhyCW0ijU-1JSxnu31OdOVfM5xxRJmxkZrhQVOC8Rkb8hVsajBYmHuwqYbRN_2q4M8ixJx2awTIOhNk2B_fp_jJsnUSFcwzFhFE1w4odzSlrEZaW-TrI9tHSOX5Zn92FxL2kZaBFSbDRhVXp_JRLeVMZQeHI4vOk75IORNYh3XZbmEyTczpQeNGJ2_OJsz_2gKYuVsIrclLzF7AqR9_nPVoDiulddySkvsOn0SZH8IE1qeIuw77NveBQep8roGmA",
+  "channelId": "WEB",
+  "Content-type": "application/json",
+  "interactionId": "WEBb692b6cc8869e78fcec48f721348505dANON62554",
+  "Referer": "https://prepaid.t-mobile.com/",
+  "screenId": "SC1135",
+  "senderId": "TMO",
+  "sessionId": "b692b6cc8869e78fcec48f721348505d",
+  "stackId": "",
+  "tl_referer": "https://prepaid.t-mobile.com/bring-your-own-device",
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+  "workflowId": "WF-SC-01.06",
+  "x-authorization": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5BIn0.eyJlZHRzIjoibUdLeHEwTWhVN0tKVlprZm10TjFza3J3VzhISzlUWVZEdFRrbGRRZUlCRSIsInYiOiIxIiwiZXhwIjoxNjcwNzQ2MDU4LCJlaHRzIjoiQ29udGVudC1UeXBlO0F1dGhvcml6YXRpb247dXJpO2h0dHAtbWV0aG9kO2JvZHk7YWN0aXZpdHlJZDtjaGFubmVsSWQ7aW50ZXJhY3Rpb25JZCIsImlhdCI6MTY3MDc0NTkzOCwianRpIjoiOTVkMzEzYjItZjVmOS0zZWVkLTViNDgtZjJiNDk5YmI5OTE5In0.Y9MQpPsHTfACB_GJfH6YYRnrwSGXLvjDyPOXi3Hj-QVLa8W-EWqX6JQ06F4vbRlWxGo43NiF7MczFolayifFUb12gnI-F7HQ-3QZVOdMw8qk8Uo92I4xO7ockWK13bP4xWXl7OBn44IbxLKiblpQpCPmneEk9DqzCZujc4YT1Sm9cIOJAFR0gofTk3CGFskLFFRz1eag8NEApXXSLlNdS_g7imclqxGJGuJbNOxWCl3MTiAwt0QwAodso8rbZc7msUtJ4wnBSpwF5HF8tPB6J39rgWz96AyrzGbRCNwW7f7cQNRFN3PkIbel_o7TbJxk3HB6Br101c2di0M-La1-CQ"
+}
+var body = {
+  "imei": "356908241999600",
+  "compatibility": true
+}
+let xAuthorization2 = getXAuthorization2(header, body)
 console.log('xAuthorization2', xAuthorization2, "\n")
 
 let token = xAuthorization1 + "." + xAuthorization2
