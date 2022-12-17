@@ -1,10 +1,5 @@
 import CryptoJS from 'crypto-js'
 
-// var a = CryptoJS.enc.Utf8.parse("123")
-// console.log(a);
-// a= CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse("123"));
-// console.log(a);
-
 /**
  * 创建密钥对
  * @returns
@@ -28,20 +23,32 @@ const generateKeys = function () {
   })
 }
 
+// /**
+//  * 使用密钥对生成公钥
+//  */
+// generateKeys().then(function (e) {
+//   console.log("Added new keys")
+//   global.keyPair = e
+//   crypto.subtle.exportKey("spki", e.publicKey).then(function (e) {
+//     var n = btoa(String.fromCharCode.apply(null, new Uint8Array(e)))
+//     var pKey = "-----BEGIN PUBLIC KEY----- " + n + " -----END PUBLIC KEY-----"
+//     console.log(pKey)
+//     global.pKey = pKey
+//   })
+// })
 
-/**
- * 使用密钥对生成公钥
- */
-generateKeys().then(function (e) {
+async function generatePubKey() {
+  let e = await generateKeys()
   console.log("Added new keys")
   global.keyPair = e
-  crypto.subtle.exportKey("spki", e.publicKey).then(function (e) {
-    var n = btoa(String.fromCharCode.apply(null, new Uint8Array(e)))
-    var pKey = "-----BEGIN PUBLIC KEY----- " + n + " -----END PUBLIC KEY-----"
-    console.log(pKey)
-    global.pKey = pKey
-  })
-})
+
+  let key = await crypto.subtle.exportKey("spki", e.publicKey)
+  var n = btoa(String.fromCharCode.apply(null, new Uint8Array(key)))
+  var pKey = "-----BEGIN PUBLIC KEY----- " + n + " -----END PUBLIC KEY-----"
+  console.log(pKey)
+  global.pKey = pKey
+  return pKey
+}
 
 
 const l = {
@@ -338,8 +345,9 @@ app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: false }))
 
 //设置接口 返回值
-app.post('/pubkey', function (req, res) {
-  res.send(global.pKey)
+app.post('/pubkey', async function (req, res) {
+  let pkey = await generatePubKey()
+  res.send(pkey)
 })
 //设置接口 返回值
 app.post('/xAuthorization', async function (req, res) {
