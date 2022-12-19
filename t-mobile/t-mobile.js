@@ -37,16 +37,15 @@ const generateKeys = function () {
 //   })
 // })
 
-async function generatePubKey() {
-  let e = await generateKeys()
-  console.log("Added new keys")
-  global.keyPair = e
+// 存公钥和keyPair的对应关系
+var keyMap = {}
 
-  let key = await crypto.subtle.exportKey("spki", e.publicKey)
+async function generatePubKey() {
+  let keyPair = await generateKeys()
+  let key = await crypto.subtle.exportKey("spki", keyPair.publicKey)
   var n = btoa(String.fromCharCode.apply(null, new Uint8Array(key)))
   var pKey = "-----BEGIN PUBLIC KEY----- " + n + " -----END PUBLIC KEY-----"
-  console.log(pKey)
-  global.pKey = pKey
+  keyMap[pKey] = keyPair
   return pKey
 }
 
@@ -192,7 +191,7 @@ function getXAuthorization2(header, body) {
 }
 
 
-async function getXAuthorization3(token) {
+async function getXAuthorization3(token, pubkey) {
   // 密钥不对
   // let keyPair = await crypto.subtle.generateKey({
   //   name: "RSASSA-PKCS1-v1_5",
@@ -215,12 +214,16 @@ async function getXAuthorization3(token) {
   let base64Str = btoa(token)
   let value = l.parse(base64Str)
 
+  let keyPair = keyMap[pubkey]
+
   const sig = await crypto.subtle.sign({
     name: "RSASSA-PKCS1-v1_5",
     hash: {
       name: "SHA-256"
     }
-  }, global.keyPair.privateKey, value)
+  }, keyPair.privateKey, value)
+
+  delete keyMap[pubkey]
 
   return l.stringify(new Uint8Array(sig))
 }
@@ -355,6 +358,7 @@ app.post('/xAuthorization', async function (req, res) {
   console.log(req.body.body)
   let header = req.body.header
   let body = req.body.body
+  let pubkey = req.body.pubkey
   var s = {
     alg: 'RS256',
     typ: 'JWT',
@@ -369,7 +373,7 @@ app.post('/xAuthorization', async function (req, res) {
   let token = xAuthorization1 + "." + xAuthorization2
   console.log("token", token, "\n")
 
-  let xAuthorization3 = await getXAuthorization3(token)
+  let xAuthorization3 = await getXAuthorization3(token, pubkey)
   console.log('xAuthorization3', xAuthorization3, "\n")
 
   let xAuthorization = token + "." + xAuthorization3
